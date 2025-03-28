@@ -1,47 +1,48 @@
 import 'https://cdn.jsdelivr.net/npm/js-md5@0.8.3/src/md5.min.js'
 import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/dropdown/dropdown.js';
 
-console.log('index.js')
-
-window.addEventListener('message', (event) => {
-  console.log(event)
-  if (event.data.type === 'setAspect') {
-    const sendingIframe = Array.from(document.querySelectorAll('iframe')).find((iframe) => iframe.contentWindow === event.source)
-    if (sendingIframe) sendingIframe.style.aspectRatio = event.data.aspect
-  } else if (event.data.type === 'openLink') {
-    window.open(event.data.url, '_blank')
-  }
-})
-
-// setup action links to iframes (e.g., zoomto, flyto, play)
-document.querySelectorAll('iframe').forEach(iframe => {
-  console.log(iframe)
-  if (!iframe.id) return
-  document.querySelectorAll('a').forEach(a => {
-    let href = a.href || a.getAttribute('data-href')
-    let path = href?.split('/').slice(3).filter(p => p !== '#' && p !== '')
-    const targetIdx = path?.findIndex(p => p == iframe.id)
-    if (targetIdx >= 0) {
-      path = path.slice(targetIdx)
-      let action = path[1]
-      let args = path.slice(2)
-      if (a.href) {
-        a.setAttribute('data-href', href)
-        a.classList.add('trigger')
-        a.removeAttribute('href')
-        a.style.cursor = 'pointer'
-        a.addEventListener('click', () => {
-          let msg = { event: 'action', action, args }
-          document.getElementById(iframe.id)?.contentWindow.postMessage(JSON.stringify(msg), '*')
-        })
-      }
+const addMessageHandler = () => {
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'setAspect') {
+      const sendingIframe = Array.from(document.querySelectorAll('iframe')).find((iframe) => iframe.contentWindow === event.source)
+      if (sendingIframe) sendingIframe.style.aspectRatio = event.data.aspect
+    } else if (event.data.type === 'openLink') {
+      window.open(event.data.url, '_blank')
     }
   })
-})
+}
 
-////////// Wikidata Entity functions //////////
+// setup action links to iframes (e.g., zoomto, flyto, play)
+const addActionLinks = () => {
+  document.querySelectorAll('iframe').forEach(iframe => {
+    if (!iframe.id) return
+    document.querySelectorAll('a').forEach(a => {
+      let href = a.href || a.getAttribute('data-href')
+      let path = href?.split('/').slice(3).filter(p => p !== '#' && p !== '')
+      const targetIdx = path?.findIndex(p => p == iframe.id)
+      if (targetIdx >= 0) {
+        path = path.slice(targetIdx)
+        let action = path[1]
+        let args = path.slice(2)
+        if (a.href) {
+          a.setAttribute('data-href', href)
+          a.classList.add('trigger')
+          a.removeAttribute('href')
+          a.style.cursor = 'pointer'
+          a.addEventListener('click', () => {
+            let msg = { event: 'action', action, args }
+            document.getElementById(iframe.id)?.contentWindow.postMessage(JSON.stringify(msg), '*')
+          })
+        }
+      }
+    })
+  })
+}
+
+////////// Start Wikidata Entity functions //////////
 
 async function getEntityData(qids, language) {
+  console.log('getEntityData', qids)
   if (!window.entityData) window.entityData = {}
   if (!window.pendingEntityData) window.pendingEntityData = new Set()
   if (!window.customEntityAliases) window.customEntityAliases = {}
@@ -190,17 +191,19 @@ export async function imageDataUrl(url, region, dest) {
 }
 
 async function getEntity(qid, language) {
+  console.log('getEntity', qid)
   language = language || 'en'
   let entities = await getEntityData([qid], language)
   let entity = entities[qid]
-  if (!entity.summaryText && entity.wikipedia) {
+  if (entity && !entity.summaryText && entity.wikipedia) {
     entity.summaryText = await getSummaryText(entity.wikipedia, language)
   }
   return entities[qid]
 }
 
-const makeEntityPopups = (rootEl) => {
-  Array.from(rootEl.querySelectorAll('a')).forEach(async a => {
+const makeEntityPopups = () => {
+  console.log('makeEntityPopups')
+  Array.from(document.body.querySelectorAll('a')).forEach(async a => {
     let path = a.href?.split('/').slice(3).filter(p => p !== '#' && p !== '')
     let qid = path?.find(p => /^Q\d+$/.test(p))
     if (qid) {
@@ -254,11 +257,11 @@ const makeEntityPopups = (rootEl) => {
   })
 }
 
-makeEntityPopups(document.body)
+////////// End Wikidata Entity functions //////////
+
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOMContentLoaded')
-  document.querySelectorAll('iframe').forEach(iframe => {
-    console.log(iframe)
-  })
+  addMessageHandler()
+  addActionLinks()
+  makeEntityPopups()
 })
