@@ -15,6 +15,7 @@ window.addEventListener('message', (event) => {
 
 // setup action links to iframes (e.g., zoomto, flyto, play)
 document.querySelectorAll('iframe').forEach(iframe => {
+  console.log(iframe)
   if (!iframe.id) return
   document.querySelectorAll('a').forEach(a => {
     let href = a.href || a.getAttribute('data-href')
