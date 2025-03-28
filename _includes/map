@@ -1,4 +1,4 @@
-{%- assign id = include.id | default: "image" -%}
+{%- assign id = include.id | default: "map" -%}
 {%- assign location = include.location | default: "0" -%}
 {%- assign caption = include.caption | default: "" | url_encode -%}
 {%- assign height = include.height | default: "300" -%}
