@@ -255,3 +255,10 @@ const makeEntityPopups = (rootEl) => {
 }
 
 makeEntityPopups(document.body)
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded')
+  document.querySelectorAll('iframe').forEach(iframe => {
+    console.log(iframe)
+  })
+})
