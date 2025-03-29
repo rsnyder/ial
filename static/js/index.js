@@ -5,6 +5,63 @@ import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/compone
 import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/tab-group/tab-group.js';
 import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/tab-panel/tab-panel.js';
 
+const classes = new Set('small medium large left right center shadow'.split(' '))
+const parseCodeEl = (el) => {
+  let tokens = []
+  el.textContent.replace(/”/g,'"').replace(/”/g,'"').replace(/’/g,"'").match(/[^\s"]+|"([^"]*)"/gmi)?.filter(t => t).forEach(token => {
+    if (tokens.length > 0 && tokens[tokens.length-1].indexOf('=') === tokens[tokens.length-1].length-1) tokens[tokens.length-1] = `${tokens[tokens.length-1]}${token}`
+    else tokens.push(token)
+  })
+  let parsed = {tag:null, id:null, kwargs:{}, classes:[], booleans:[]}
+  let tokenIdx = 0
+  while (tokenIdx < tokens.length) {
+    let token = tokens[tokenIdx].replace(/<em>/g, '_').replace(/<\/em>/g, '_')
+    if (tokenIdx == 0) parsed.tag = token
+    else if (/#\w+/.test(token)) parsed['id'] = token.slice(1)
+    else if (token.indexOf('=') > 0 && /^[\w-:]+=/.test(token)) {
+      let idx = token.indexOf('=')
+      let key = token.slice(0, idx)
+      let value = token.slice(idx+1)
+      value = value[0] === '"' && value[value.length-1] === '"' ? value.slice(1, -1) : value
+      if (parsed.kwargs[key]) parsed.kwargs[key] += `|${value}`
+      else parsed.kwargs[key] = value
+    }
+    else if (classes.has(token)) parsed.classes.push(token)
+    else parsed.booleans.push(token)
+    tokenIdx++
+  }
+
+  let parent = el.parentElement
+  let nonCodeChildren = Array.from(parent.childNodes).filter(c => c.textContent.trim()).filter(c => c.tagName !== 'CODE')
+  parsed.inline = nonCodeChildren.length > 0
+
+  // if (parent?.nextElementSibling?.tagName === 'UL' && parent?.nextElementSibling?.getAttribute('data') === '')
+  //   parsed.kwargs.data = encodeURIComponent(parent.nextElementSibling.outerHTML.trim().replace(/\n/g, '').replace(/ data=\"\" style=\"display:none;\"/, ''))
+
+  return parsed
+}
+
+// const ifcPrefix = location.hostname === 'localhost' ? 'http://localhost:8080' : 'https://ifc.juncture-digital.org'
+const ifcPrefix = 'https://ifc.juncture-digital.org'
+const makeIframe = (el, code) => {
+  let iframe = document.createElement('iframe')
+  iframe.setAttribute('allowfullscreen', '')
+  iframe.setAttribute('allow', 'clipboard-write')
+  if (code.tag === 'audio') iframe.setAttribute('allow', 'autoplay')
+  if (code.id) iframe.id = code.id
+  if (code.classes.length > 0) iframe.className = code.classes.join(' ')
+  let args = [...Object.entries(code.kwargs).map(([key, value]) => `${key}=${encodeURIComponent(value)}`), ...(code.booleans || [])].join('&')
+  iframe.src = `${ifcPrefix}/${code.tag}?${args}`
+
+  let isOnlyChild = el.parentElement?.children.length === 1 && el.parentElement?.children[0] === el
+  if (isOnlyChild) el.parentElement.replaceWith(iframe)
+  else {
+    let nonCodeElements = Array.from(el.parentElement?.children).filter(c => c.tagName !== 'CODE').length
+    if (!nonCodeElements) el.parentElement.classList.add('iframe-container')
+      el.replaceWith(iframe)
+  }
+}
+
 /**
  * Restructure an HTML element (generated from Markdown) so that each heading
  * and its following content are wrapped in nested <section> elements according to heading level.
@@ -439,10 +496,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // content.replaceWith(newContent)
   content.innerHTML = newContent.innerHTML
 
+  addMessageHandler()
+  makeEntityPopups()
+
+  content.querySelectorAll('p > code').forEach(codeEl => {
+    let parsed = parseCodeEl(codeEl)
+    console.log(parsed)
+    if (parsed.tag && !parsed.inline) makeIframe(codeEl, parsed)
+  })
+
   makeCards(content)
   makeTabs(content)
-
-  addMessageHandler()
   addActionLinks()
-  makeEntityPopups()
+
 })
