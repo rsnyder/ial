@@ -19,6 +19,7 @@ body {
   width: 1.4em;
 }
 
+section,
 hr {
   clear: both;
 }

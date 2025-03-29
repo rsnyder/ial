@@ -1,9 +1,13 @@
-{%- assign id = include.id | default: "map" -%}
+{%- assign id = include.id -%}
+{%- assign class = include.class -%}
+{%- assign style = include.style -%}
 {%- assign location = include.location | default: "0" -%}
 {%- assign caption = include.caption | default: "" | url_encode -%}
 {%- assign height = include.height | default: "300" -%}
 <iframe
   id="{{ id }}"
+  class="{{ class }}"
+  style="{{ style }}"
   allowfullscreen
   allow="clipboard-write"
   src="https://ifc.juncture-digital.org/map?location={{ location }}&caption={{ caption }}"
