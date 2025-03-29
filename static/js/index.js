@@ -30,10 +30,9 @@ const restructureMarkdownToSections = (contentEl) => {
   const nodes = Array.from(container.childNodes);
   
   nodes.forEach(node => {
-    console.log(node)
     // Check if the node is an element and is a heading (H1 - H6)
     if (node.nodeType === Node.ELEMENT_NODE && /^H[1-6]$/.test(node.tagName)) {
-      console.log(node)
+      node.textContent = node.textContent.replace(/^\s+$/, '')
       // Determine the heading level (e.g., "H2" -> 2)
       const headingLevel = parseInt(node.tagName[1], 10);
       
@@ -148,7 +147,6 @@ const makeCards = (rootEl) => {
 const makeTabs = (rootEl) => {
   rootEl.querySelectorAll('section.tabs').forEach(section => {
     let heading = section.firstChild
-    console.log(heading)
     let tabGroup = document.createElement('sl-tab-group');
     Array.from(section.classList).forEach(cls => tabGroup.classList.add(cls))
     Array.from(section.attributes).forEach(attr => tabGroup.setAttribute(attr.name, attr.value))

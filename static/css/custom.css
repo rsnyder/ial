@@ -5,6 +5,10 @@ body {
   /* margin: 1em; */
 }
 
+.wrapper {
+  padding: 0 0.5em;
+}
+
 .footer-col {
   display: flex;
   align-items: center;
@@ -162,7 +166,20 @@ a.trigger:hover {
   display: grid;
   /* Create responsive columns with a minimum width of 250px */
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem; /* Space between grid items */
+  /* gap: 1rem; */
+}
+
+section p:last-of-type {
+  margin-bottom: 0;
+}
+
+.post-content h1, 
+.post-content h2, 
+.post-content h3, 
+.post-content h4, 
+.post-content h5, 
+.post-content h6 {
+  margin-top: 1em;
 }
 
 /* Ensure any heading within the .columns container spans the full width */
@@ -179,7 +196,7 @@ a.trigger:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
-  padding: 1em 0;
+  padding: 0 0;
 }
 
 sl-card::part(base) {
@@ -204,6 +221,10 @@ sl-card .content .description p:last-of-type {
 }
 
 @media (min-width: 600px) {
+
+  .wrapper {
+    padding: 0 1.5em;
+  }
 
   .fill {
     width: 100% !important;
