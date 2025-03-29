@@ -1,5 +1,144 @@
 import 'https://cdn.jsdelivr.net/npm/js-md5@0.8.3/src/md5.min.js'
+import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/card/card.js';
 import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/dropdown/dropdown.js';
+
+/**
+ * Restructure an HTML element (generated from Markdown) so that each heading
+ * and its following content are wrapped in nested <section> elements according to heading level.
+ * Additionally, any id, class, or style attributes applied to a heading (using Kramdown IAL syntax)
+ * are transferred to the corresponding section.
+ *
+ * @param {element} contentEl - The HTML element from your Markdown.
+ * @returns {element} - The new HTML element with nested sections.
+ */
+const restructureMarkdownToSections = (contentEl) => {
+  // Create a container element to hold the content.
+  const container = document.createElement(contentEl.tagName);
+  if (contentEl.id) container.id = contentEl.id
+  if (contentEl.className) container.className = contentEl.className
+  if (contentEl.getAttribute('style')) container.setAttribute('style', contentEl.getAttribute('style'))
+  container.innerHTML = contentEl.innerHTML;
+  
+  // Use a stack to keep track of the current section levels.
+  // The stack starts with the container (level 0).
+  const stack = [{ level: 0, element: container }];
+  
+  // Get a static list of the container’s children.
+  const nodes = Array.from(container.childNodes);
+  
+  nodes.forEach(node => {
+    // Check if the node is an element and is a heading (H1 - H6)
+    if (node.nodeType === Node.ELEMENT_NODE && /^H[1-6]$/.test(node.tagName)) {
+      // Determine the heading level (e.g., "H2" -> 2)
+      const headingLevel = parseInt(node.tagName[1], 10);
+      
+      // Pop sections from the stack until we find one with a lower level.
+      while (stack.length > 0 && stack[stack.length - 1].level >= headingLevel) {
+        stack.pop();
+      }
+      
+      // Create a new section and move the heading into it.
+      const section = document.createElement('section');
+      
+      // Transfer any id, class, and style attributes from the heading to the section.
+      ['id', 'class', 'style'].forEach(attr => {
+        if (node.hasAttribute(attr)) {
+          section.setAttribute(attr, node.getAttribute(attr));
+          node.removeAttribute(attr);
+        }
+      });
+      
+      // Move the heading into the new section.
+      section.appendChild(node);
+      
+      // Append the new section to the element at the top of the stack.
+      stack[stack.length - 1].element.appendChild(section);
+      
+      // Push the new section onto the stack with its heading level.
+      stack.push({ level: headingLevel, element: section });
+    } else {
+      // For non-heading nodes, append them to the current (top of the stack) section.
+      stack[stack.length - 1].element.appendChild(node);
+    }
+  });
+  
+  // return container.innerHTML;
+  return container
+}
+
+/**
+ * Convert sub-sections inside a '.cards' section into a responsive grid of Shoelace cards.
+ * Each card uses:
+ * - The sub-section heading as the card header.
+ * - The first image as the card image.
+ * - All paragraphs and lists as the card content.
+ */
+const makeCards = (rootEl) => {
+  rootEl.querySelectorAll('section.cards').forEach(cardsSection => {
+
+  // Create a container for the card grid.
+  const cardGrid = document.createElement('div');
+  cardGrid.className = 'card-grid';
+
+  // Get all direct sub-sections within the cards section (skip the main heading).
+  const subsections = Array.from(cardsSection.querySelectorAll('section'));
+
+  subsections.forEach(sub => {
+    // Create a new sl-card element.
+    const card = document.createElement('sl-card');
+
+    // --- Card Header ---
+    const subHeading = sub.querySelector('h1, h2, h3, h4, h5, h6');
+    if (subHeading) {
+      const header = document.createElement('div');
+      header.setAttribute('slot', 'header');
+      
+      // Look for the first link within the sub-section.
+      const firstLink = sub.querySelector('a[href]');
+      if (firstLink) {
+        const link = document.createElement('a');
+        link.href = firstLink.getAttribute('href');
+        link.textContent = subHeading.textContent;
+        header.appendChild(link);
+        firstLink.parentElement.remove()
+      } else {
+        header.textContent = subHeading.textContent;
+      }
+      card.appendChild(header);
+    }
+
+    // --- Card Image ---
+    const image = sub.querySelector('img');
+    if (image) {
+      let imgParent = image.parentElement
+      image.setAttribute('slot', 'image');
+      card.appendChild(image);
+      imgParent.remove()
+    }
+
+    // --- Card Content ---
+    // Create a container for any paragraphs or lists.
+    const contentWrapper = document.createElement('div');
+    // Gather any paragraphs or lists (skip headings and images)
+    const contentElements = Array.from(sub.children).filter(el => {
+      return !/^H[1-6]$/.test(el.tagName) && el.tagName.toLowerCase() !== 'img';
+    });
+    contentElements.forEach(el => {
+      contentWrapper.appendChild(el.cloneNode(true));
+    });
+    card.appendChild(contentWrapper);
+
+    // Add the card to the grid.
+    cardGrid.appendChild(card);
+  });
+
+  // Optionally, remove the original sub-sections.
+  subsections.forEach(sub => sub.remove());
+
+  // Append the card grid to the cards section.
+  cardsSection.appendChild(cardGrid);
+})
+}
 
 const addMessageHandler = () => {
   window.addEventListener('message', (event) => {
@@ -42,7 +181,6 @@ const addActionLinks = () => {
 ////////// Start Wikidata Entity functions //////////
 
 async function getEntityData(qids, language) {
-  console.log('getEntityData', qids)
   if (!window.entityData) window.entityData = {}
   if (!window.pendingEntityData) window.pendingEntityData = new Set()
   if (!window.customEntityAliases) window.customEntityAliases = {}
@@ -191,7 +329,6 @@ export async function imageDataUrl(url, region, dest) {
 }
 
 async function getEntity(qid, language) {
-  console.log('getEntity', qid)
   language = language || 'en'
   let entities = await getEntityData([qid], language)
   let entity = entities[qid]
@@ -202,7 +339,6 @@ async function getEntity(qid, language) {
 }
 
 const makeEntityPopups = () => {
-  console.log('makeEntityPopups')
   Array.from(document.body.querySelectorAll('a')).forEach(async a => {
     let path = a.href?.split('/').slice(3).filter(p => p !== '#' && p !== '')
     let qid = path?.find(p => /^Q\d+$/.test(p))
@@ -261,6 +397,13 @@ const makeEntityPopups = () => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+  let content = document.querySelector('div.post-content')
+  let newContent = restructureMarkdownToSections(content)
+  // content.replaceWith(newContent)
+  content.innerHTML = newContent.innerHTML
+
+  makeCards(content)
+
   addMessageHandler()
   addActionLinks()
   makeEntityPopups()

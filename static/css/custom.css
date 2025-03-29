@@ -157,6 +157,51 @@ a.trigger:hover {
   background-color: rgba(250, 128, 114, 0.2)
 }
 
+.columns {
+  display: grid;
+  /* Create responsive columns with a minimum width of 250px */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem; /* Space between grid items */
+}
+
+/* Ensure any heading within the .columns container spans the full width */
+.columns > h1,
+.columns > h2,
+.columns > h3,
+.columns > h4,
+.columns > h5,
+.columns > h6 {
+  grid-column: 1 / -1;
+}
+
+.cards .card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1em 0;
+}
+
+sl-card::part(base) {
+  height: 100%;
+}
+
+sl-card::part(header) {
+  padding: 0.5em;
+  border-bottom: none;
+  font-size: 120%;
+  font-weight: 600;
+  color: inherit;
+}
+
+sl-card::part(body) {
+  padding: 0 0.5em;
+  color: inherit;
+}
+
+sl-card .content .description p:last-of-type {
+  margin-bottom: 0;
+}
+
 @media (min-width: 600px) {
 
   .fill {
@@ -204,4 +249,8 @@ a.trigger:hover {
     width: 33% !important;
   }
 
+}
+
+section:has(> iframe.right), section:has(> iframe.left) {
+  display: flow-root;
 }
