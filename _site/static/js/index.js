@@ -1,6 +1,9 @@
 import 'https://cdn.jsdelivr.net/npm/js-md5@0.8.3/src/md5.min.js'
 import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/card/card.js';
 import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/dropdown/dropdown.js';
+import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/tab/tab.js';
+import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/tab-group/tab-group.js';
+import 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.18.0/cdn/components/tab-panel/tab-panel.js';
 
 /**
  * Restructure an HTML element (generated from Markdown) so that each heading
@@ -27,8 +30,10 @@ const restructureMarkdownToSections = (contentEl) => {
   const nodes = Array.from(container.childNodes);
   
   nodes.forEach(node => {
+    console.log(node)
     // Check if the node is an element and is a heading (H1 - H6)
     if (node.nodeType === Node.ELEMENT_NODE && /^H[1-6]$/.test(node.tagName)) {
+      console.log(node)
       // Determine the heading level (e.g., "H2" -> 2)
       const headingLevel = parseInt(node.tagName[1], 10);
       
@@ -138,6 +143,40 @@ const makeCards = (rootEl) => {
   // Append the card grid to the cards section.
   cardsSection.appendChild(cardGrid);
 })
+}
+
+const makeTabs = (rootEl) => {
+  rootEl.querySelectorAll('section.tabs').forEach(section => {
+    let heading = section.firstChild
+    console.log(heading)
+    let tabGroup = document.createElement('sl-tab-group');
+    Array.from(section.classList).forEach(cls => tabGroup.classList.add(cls))
+    Array.from(section.attributes).forEach(attr => tabGroup.setAttribute(attr.name, attr.value))
+    
+    Array.from(section.querySelectorAll(':scope > section'))
+    .forEach((tabSection, idx) => {
+      let tab = document.createElement('sl-tab')
+      tab.setAttribute('slot', 'nav')
+      tab.setAttribute('panel', `tab${idx+1}`)
+      if (idx === 0) tab.setAttribute('active', '')
+      tab.innerHTML = tabSection.querySelector('h1, h2, h3, h4, h5, h6')?.innerHTML || ''
+      tabGroup.appendChild(tab)      
+    })
+
+    Array.from(section.querySelectorAll(':scope > section'))
+    .forEach((tabSection, idx) => {
+      let tabPanel = document.createElement('sl-tab-panel')
+      tabPanel.setAttribute('name', `tab${idx+1}`)
+      if (idx === 0) tabPanel.setAttribute('active', '')
+      let tabContent = Array.from(tabSection.children).slice(1).map(el => el.outerHTML).join(' ')
+      tabPanel.innerHTML = tabContent
+      tabGroup.appendChild(tabPanel)
+      tabSection.remove()
+    })
+
+    // section.replaceWith(tabGroup)
+    section.appendChild(tabGroup)
+  })
 }
 
 const addMessageHandler = () => {
@@ -403,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
   content.innerHTML = newContent.innerHTML
 
   makeCards(content)
+  makeTabs(content)
 
   addMessageHandler()
   addActionLinks()
