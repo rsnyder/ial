@@ -12,11 +12,13 @@ const parseCodeEl = (el) => {
     if (tokens.length > 0 && tokens[tokens.length-1].indexOf('=') === tokens[tokens.length-1].length-1) tokens[tokens.length-1] = `${tokens[tokens.length-1]}${token}`
     else tokens.push(token)
   })
-  let parsed = {tag:null, id:null, kwargs:{}, classes:[], booleans:[]}
+  let parsed = {el, tag:null, id:null, kwargs:{}, classes:[], booleans:[], data:[]}
   let tokenIdx = 0
   while (tokenIdx < tokens.length) {
     let token = tokens[tokenIdx].replace(/<em>/g, '_').replace(/<\/em>/g, '_')
-    if (tokenIdx == 0) parsed.tag = token
+    if (tokenIdx == 0) {
+      if (token !== '-') parsed.tag = token
+    }
     else if (/#\w+/.test(token)) parsed['id'] = token.slice(1)
     else if (token.indexOf('=') > 0 && /^[\w-:]+=/.test(token)) {
       let idx = token.indexOf('=')
@@ -41,9 +43,8 @@ const parseCodeEl = (el) => {
   return parsed
 }
 
-// const ifcPrefix = location.hostname === 'localhost' ? 'http://localhost:8080' : 'https://ifc.juncture-digital.org'
-const ifcPrefix = 'https://ifc.juncture-digital.org'
-const makeIframe = (el, code) => {
+const ifcPrefix = location.hostname === 'localhost' ? 'http://localhost:8080' : 'https://ifc.juncture-digital.org'
+const makeIframe = (code) => {
   let iframe = document.createElement('iframe')
   iframe.setAttribute('allowfullscreen', '')
   iframe.setAttribute('allow', 'clipboard-write')
@@ -53,12 +54,12 @@ const makeIframe = (el, code) => {
   let args = [...Object.entries(code.kwargs).map(([key, value]) => `${key}=${encodeURIComponent(value)}`), ...(code.booleans || [])].join('&')
   iframe.src = `${ifcPrefix}/${code.tag}?${args}`
 
-  let isOnlyChild = el.parentElement?.children.length === 1 && el.parentElement?.children[0] === el
-  if (isOnlyChild) el.parentElement.replaceWith(iframe)
+  let isOnlyChild = code.el.parentElement?.children.length === 1 && code.el.parentElement?.children[0] === code.el
+  if (isOnlyChild) code.el.parentElement.replaceWith(iframe)
   else {
-    let nonCodeElements = Array.from(el.parentElement?.children).filter(c => c.tagName !== 'CODE').length
-    if (!nonCodeElements) el.parentElement.classList.add('iframe-container')
-      el.replaceWith(iframe)
+    let nonCodeElements = Array.from(code.el.parentElement?.children).filter(c => c.tagName !== 'CODE').length
+    if (!nonCodeElements) code.el.parentElement.classList.add('iframe-container')
+      code.el.replaceWith(iframe)
   }
 }
 
@@ -499,11 +500,31 @@ document.addEventListener('DOMContentLoaded', () => {
   addMessageHandler()
   makeEntityPopups()
 
+  Array.from(content.querySelectorAll('p > code'))
+    .map(codeEl => parseCodeEl(codeEl))
+    .reduce((acc, parsed) => {
+      if (parsed.tag) acc.push(parsed)
+      else {
+        acc[acc.length-1].data.push([...Object.entries(parsed.kwargs).map(([key, value]) => `${key}=${encodeURIComponent(value)}`), ...(parsed.booleans || [])].join('&'))
+        parsed.el.remove()
+      }
+      return acc
+    }, [])
+    .forEach(codeEl => {
+      if (codeEl.data.length > 0) codeEl.kwargs.data = codeEl.data.join('|')
+      makeIframe(codeEl)
+    })
+
+  /*
   content.querySelectorAll('p > code').forEach(codeEl => {
     let parsed = parseCodeEl(codeEl)
     console.log(parsed)
     if (parsed.tag && !parsed.inline) makeIframe(codeEl, parsed)
+    else if (parsed.isData) {
+      console.log('data')
+    }
   })
+  */
 
   makeCards(content)
   makeTabs(content)
